@@ -27,7 +27,6 @@ import importlib.util
 import json
 import logging
 import sys
-import typing
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
 from urllib import error, request
@@ -522,12 +521,20 @@ class AgencyConsultTool:
         # cannot run on the event loop: measured at 26.85s per call, which froze every
         # HTTP request the host was serving -- including unauthenticated ones -- for the
         # duration. A worker thread keeps the loop free while this waits on the network.
-        return await asyncio.to_thread(self._ask, agent, prompt, question, resolved, payload, trace_id)
+        return await asyncio.to_thread(
+            self._ask,
+            agent=agent,
+            prompt=prompt,
+            question=question,
+            resolved=resolved,
+            payload=payload,
+            trace_id=trace_id,
+        )
 
     # -- the provider call ---------------------------------------------------
-    @typing.override
     def _ask(
         self,
+        *,
         agent: Any,
         prompt: str,
         question: str,
