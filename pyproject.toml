@@ -1,0 +1,108 @@
+# A standalone plugin repository's own project file: the tooling a plugin author
+# runs, and nothing else. `package = false` below says there is nothing to
+# build - the host loads a plugin from its directory, it never installs it.
+#
+#   uv sync          # creates .venv with the dev group
+#   uv run pytest    # tests this plugin with no host source present
+#   uv run ruff check .
+#
+# Inside the host repository the same tests run against the real PluginManager.
+# tests/conftest.py decides that, not anything here.
+
+[project]
+name = "agency-agents-plugin"
+# Deliberately not a version. plugin.yaml is the only place the plugin's
+# version lives - it is what the host shows and what release tags are cut
+# from. uv accepts a dynamic version for a virtual project and leaves it out
+# of uv.lock, so a release never touches this file or the lockfile.
+dynamic = ["version"]
+description = "The Agency roster - 279 specialist AI personas ported from agency-agents"
+requires-python = ">=3.11"
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest>=8", "PyYAML>=6", "ruff>=0.13"]
+
+[tool.uv]
+# A plugin is loaded by the host from its directory, never installed, so
+# there is nothing here to build.
+package = false
+
+[tool.setuptools]
+# The version is dynamic, so uv still asks the build backend for metadata. With
+# several top-level modules setuptools refuses to guess what to package;
+# nothing is packaged, so say so.
+py-modules = []
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+# No -q: the header line names which host backend ran, and a silent
+# fallback to the stand-in is exactly what you do not want.
+addopts = "-ra --strict-markers --tb=short"
+testpaths = ["tests"]
+python_files = "test_*.py"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "W",
+    "F",
+    "I",
+    "N",
+    "D",
+    "PL",
+    "A",
+    "B",
+    "C4",
+    "ICN",
+    "PT",
+    "SIM",
+    "TC",
+    "ARG",
+    "UP",
+    "PERF",
+    "RUF",
+]
+ignore = [
+    "D100",
+    "D101",
+    "D102",
+    "D103",
+    "D104",
+    "D105",
+    "D107",
+    "D203",
+    "D205",
+    "D213",
+    "D400",
+    "D415",
+    "D416",
+    "ARG001",
+    "ARG002",
+    "ARG005",
+    "A002",
+    "E501",
+    "RUF001",
+    "RUF002",
+    "RUF003",
+    "PLR0912",
+    "PLR0913",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# A plugin directory is discovered by name, not imported as a package, so a
+# non-identifier directory name is fine.
+"*.py" = ["N999"]
+# Tests read better with bare asserts and inline literals.
+"tests/**/*.py" = ["D", "PLR2004", "S101"]
+# RealHost imports the project's modules inside each method deliberately: this
+# file has to import cleanly when the project is not present at all, which is
+# the entire point of the standalone workflow.
+"tests/harness/host.py" = ["D", "PLR2004", "S101", "PLC0415"]
+# conftest imports the backend only after deciding which one exists, and the
+# stand-ins have to be installed before any plugin module is imported.
+"tests/conftest.py" = ["D", "PLR2004", "S101", "PLC0415"]

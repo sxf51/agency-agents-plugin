@@ -1,0 +1,65 @@
+# Every push and pull request runs the plugin's own test suite against the
+# standalone harness in tests/ - no host checkout required. This is the gate the
+# release workflow reuses, so a red CI run is also a blocked release.
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The floor is what the host requires; the ceiling catches deprecations
+        # before a host upgrade turns them into a broken plugin.
+        python-version: ['3.11', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The changelog preview needs the tags and the history since the last one.
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      # Plugins that keep state in Redis test against a real, throwaway server
+      # the tests start themselves; they need the binary, not a running service.
+      - name: Install Redis
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends redis-server
+
+      - name: Install dependencies
+        run: uv sync --frozen --python ${{ matrix.python-version }}
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Test
+        run: uv run pytest
+
+      - name: Version metadata is releasable
+        run: uv run python .github/scripts/plugin_version.py --check
+
+      # What the next release's notes would say if it were cut from this commit,
+      # so a commit message that would read badly there is caught in review.
+      - name: Changelog preview
+        if: matrix.python-version == '3.13'
+        run: |
+          {
+            echo "## Unreleased changes"
+            echo
+            uv run python .github/scripts/changelog.py
+          } >> "$GITHUB_STEP_SUMMARY"

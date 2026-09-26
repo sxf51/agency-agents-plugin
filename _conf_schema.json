@@ -1,0 +1,189 @@
+{
+  "llm": {
+    "type": "object",
+    "label": { "zh": "语言模型", "en": "Language model" },
+    "description": {
+      "zh": "向人格提问时用哪个模型。宿主按 插件覆盖值 > 所选 provider > 全局默认 逐字段解析",
+      "en": "The model a persona answers through. The host resolves it field by field as plugin override > selected provider > global default"
+    },
+    "items": {
+      "provider": {
+        "type": "string",
+        "label": { "zh": "服务商", "en": "Provider" },
+        "hint": {
+          "zh": "留空使用全局默认。下拉列表来自这套部署实际配置的 provider",
+          "en": "Empty uses the global default. The list comes from what this deployment actually has configured"
+        },
+        "default": "",
+        "options_source": "llm.providers"
+      },
+      "model": {
+        "type": "string",
+        "label": { "zh": "模型", "en": "Model" },
+        "hint": {
+          "zh": "留空则沿用所选 provider 的模型；人格提示词较长，建议用上下文窗口大一些的模型",
+          "en": "Empty keeps the selected provider's model. A persona prompt is long, so prefer a model with room for it"
+        },
+        "default": "",
+        "options_source": "llm.models",
+        "depends_on": "provider"
+      },
+      "temperature": {
+        "type": "float",
+        "label": { "zh": "温度", "en": "Temperature" },
+        "hint": {
+          "zh": "人格本身已经带足够的风格，温度不必调高",
+          "en": "The persona already supplies the voice; this does not need to be high"
+        },
+        "default": 0.3
+      },
+      "timeout_sec": {
+        "type": "float",
+        "label": { "zh": "请求超时（秒）", "en": "Request timeout (seconds)" },
+        "hint": {
+          "zh": "单次模型请求最多等多久。0 表示沿用所选 provider 的超时；咨询工具的外层超时自动跟着它走",
+          "en": "How long one model request may take. 0 keeps the provider's own timeout; the consult tool's outer timeout follows it"
+        },
+        "default": 0.0
+      }
+    }
+  },
+
+  "roster": {
+    "type": "object",
+    "label": { "zh": "名册", "en": "Roster" },
+    "description": {
+      "zh": "279 位人格都能被搜索和阅读；这里决定规划器能直接路由到哪几个部门",
+      "en": "All 279 personas are searchable and readable. This decides which divisions the planner can route to directly"
+    },
+    "items": {
+      "subagent_divisions": {
+        "type": "list",
+        "label": { "zh": "注册为子智能体的部门", "en": "Divisions registered as subagents" },
+        "hint": {
+          "zh": "每个部门注册一个子智能体（如 agency_engineering_specialist）。列表越长，规划器的候选提示词越长——只留这套部署真的会用到的部门。可选值：academic、design、engineering、finance、game-development、gis、healthcare、marketing、paid-media、product、project-management、research、sales、security、spatial-computing、specialized、support、testing",
+          "en": "One subagent per division, e.g. agency_engineering_specialist. A longer list means a longer routing prompt, so keep the divisions this deployment actually uses. Available: academic, design, engineering, finance, game-development, gis, healthcare, marketing, paid-media, product, project-management, research, sales, security, spatial-computing, specialized, support, testing"
+        },
+        "default": ["engineering", "design", "product", "marketing", "security", "testing"]
+      },
+      "max_results": {
+        "type": "int",
+        "label": { "zh": "搜索返回条数", "en": "Search results" },
+        "hint": {
+          "zh": "工具与页面搜索默认返回多少位人格",
+          "en": "How many personas a search returns by default, in the tool and on the page"
+        },
+        "default": 8
+      },
+      "brief_max_chars": {
+        "type": "int",
+        "label": { "zh": "简报最大字数", "en": "Brief size (characters)" },
+        "hint": {
+          "zh": "读取人格提示词时截断到这个长度，返回值会说明是否被截断",
+          "en": "A persona prompt is clipped to this when read; the result says whether it was"
+        },
+        "default": 6000
+      },
+      "persona_max_chars": {
+        "type": "int",
+        "label": { "zh": "系统提示词最大字数", "en": "System prompt size (characters)" },
+        "hint": {
+          "zh": "咨询时作为 system 提示词发出去的人格长度上限。上游最长的人格约 4 万字符，全量发送很贵",
+          "en": "How much of a persona is sent as the system prompt. The longest upstream persona is around 40k characters, and sending all of it is expensive"
+        },
+        "default": 12000
+      }
+    }
+  },
+
+  "consult": {
+    "type": "object",
+    "label": { "zh": "咨询", "en": "Consultation" },
+    "items": {
+      "auto_run": {
+        "type": "bool",
+        "label": { "zh": "子智能体直接作答", "en": "Specialists answer directly" },
+        "hint": {
+          "zh": "开启时，子智能体挑好人格后直接发一次模型请求作答；关闭时只返回人格简报，由调用方自己决定怎么用",
+          "en": "On, a specialist picks a persona and answers with one model request. Off, it returns the persona brief and leaves the call to the caller"
+        },
+        "default": true
+      },
+      "answer_language": {
+        "type": "string",
+        "label": { "zh": "回答语言", "en": "Answer language" },
+        "hint": {
+          "zh": "上游人格全部是英文写的，默认让模型跟着提问语言回答",
+          "en": "The upstream personas are written in English; the default asks the model to follow the question's language"
+        },
+        "default": "auto",
+        "options": ["auto", "zh", "en"],
+        "option_labels": {
+          "auto": { "zh": "跟随提问语言", "en": "Follow the question" },
+          "zh": { "zh": "中文", "en": "Chinese" },
+          "en": { "zh": "英文", "en": "English" }
+        }
+      },
+      "system_prefix": {
+        "type": "text",
+        "label": { "zh": "系统提示词前缀", "en": "System prompt preamble" },
+        "hint": {
+          "zh": "拼在人格提示词之前，用来加本部署自己的边界，例如禁止编造事实、必须给出可执行步骤",
+          "en": "Prepended to the persona prompt - where a deployment adds its own boundaries, such as no invented facts or always give runnable steps"
+        },
+        "default": "Stay inside the persona below. Say plainly when something is outside your speciality, and never invent facts, prices or metrics."
+      },
+      "keep_last": {
+        "type": "int",
+        "label": { "zh": "保留咨询记录数", "en": "Consultations to retain" },
+        "hint": {
+          "zh": "每个用户保留最近多少条咨询记录，超出的在下一次咨询后被清理",
+          "en": "How many consultations are kept per user; older ones are trimmed after the next consultation"
+        },
+        "default": 50
+      }
+    }
+  },
+
+  "panel": {
+    "type": "object",
+    "label": { "zh": "专家小组", "en": "Panel" },
+    "description": {
+      "zh": "/agency-panel 组出来的小组默认长什么样。vote 至少 2 人、dialogue 恰好 2 人、consensus 最多 7 人，这是宿主编译器的硬约束",
+      "en": "What /agency-panel assembles by default. The host's compiler requires at least 2 voters, exactly 2 dialogue participants, and at most 7 judges"
+    },
+    "items": {
+      "mode": {
+        "type": "string",
+        "label": { "zh": "协作方式", "en": "Collaboration mode" },
+        "default": "dialogue",
+        "options": ["dialogue", "vote", "consensus"],
+        "option_labels": {
+          "dialogue": { "zh": "对话（恰好两位）", "en": "Dialogue (exactly two)" },
+          "vote": { "zh": "表决", "en": "Vote" },
+          "consensus": { "zh": "质证（判官评一份提案）", "en": "Consensus (judges review one proposal)" }
+        }
+      },
+      "size": {
+        "type": "int",
+        "label": { "zh": "小组人数", "en": "Panel size" },
+        "hint": {
+          "zh": "会按所选协作方式的上下限夹紧",
+          "en": "Clamped to the chosen mode's own limits"
+        },
+        "default": 3
+      }
+    }
+  },
+
+  "schema_version": {
+    "type": "string",
+    "label": { "zh": "配置版本", "en": "Schema version" },
+    "hint": {
+      "zh": "invisible 字段不出现在表单里，但仍进入 plugin.config，适合放迁移标记",
+      "en": "An invisible field is hidden from the form but still lands in plugin.config - good for migration markers"
+    },
+    "invisible": true,
+    "default": "1"
+  }
+}

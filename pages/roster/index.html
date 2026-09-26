@@ -1,0 +1,82 @@
+<!doctype html>
+<!--
+  The Agency Roster page.
+
+  Four rules that cause most blank pages:
+
+  1. Never write a script tag for the bridge asset yourself. The host inserts one
+     when it serves this file; adding your own can load the bridge twice.
+  2. Never write a literal opening head tag inside a comment. The host injects
+     the bridge right after the first one it finds in the source text, comments
+     included, so a decorative one here would swallow the bridge and leave the
+     page unable to talk to the backend at all.
+  3. No external resources. The page CSP allows only this origin, so a CDN
+     script, a web font or a remote image is blocked silently.
+  4. Everything reaches the backend through window.CapstonePluginPage. The page
+     runs in a sandboxed iframe on an opaque origin with connect-src 'none'.
+
+  Visible text is keyed with data-i18n and filled in from app.js, because the
+  reader's language can change while the page is open.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Agency Roster</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="head">
+      <div class="eyebrow"><span class="signal"></span><span data-i18n="eyebrow">SPECIALIST DIRECTORY</span></div>
+      <div class="head-main">
+        <div><h1 data-i18n="title">Agency Roster</h1><p class="intro" data-i18n="subtitle">Specialist personas, vendored from agency-agents.</p></div>
+        <div class="status" aria-label="Roster status">
+          <span id="count" class="stat">—</span>
+          <span id="backend" class="stat">—</span>
+        </div>
+      </div>
+      <div class="session"><span data-i18n="session">CURRENT SESSION</span><strong id="who">—</strong></div>
+    </header>
+
+    <main>
+      <section class="card search">
+        <div class="section-heading"><div><span class="section-index" data-i18n="directoryIndex">01 / DIRECTORY</span><h2 data-i18n="searchTitle">Find a specialist</h2></div><span id="result-count" class="small-count">—</span></div>
+        <div class="row">
+          <input id="query" type="search" aria-label="Search specialists" data-i18n-placeholder="queryPlaceholder" />
+          <select id="division" aria-label="Division"></select>
+          <button id="search" type="button" data-i18n="search">Search</button>
+        </div>
+        <ul id="results" class="results"></ul>
+      </section>
+
+      <section class="card persona">
+        <div class="section-heading"><div><span class="section-index" data-i18n="profileIndex">02 / PROFILE</span><h2 id="persona-name" data-i18n="personaTitle">Persona</h2></div><span class="profile-mark">✦</span></div>
+        <p id="persona-meta" class="muted"></p>
+        <p id="persona-vibe" class="vibe"></p>
+        <div class="prompt-label" data-i18n="promptLabel">SYSTEM PROMPT</div>
+        <pre id="persona-prompt" class="prompt"></pre>
+        <div class="row profile-footer">
+          <button id="download" type="button" class="ghost" data-i18n="download">Download markdown</button>
+          <span id="persona-routing" class="routing"></span>
+        </div>
+      </section>
+
+      <section class="card ask">
+        <div class="section-heading"><div><span class="section-index" data-i18n="consultIndex">03 / CONSULT</span><h2 data-i18n="askTitle">Ask this persona</h2></div></div>
+        <textarea id="question" rows="3" data-i18n-placeholder="questionPlaceholder"></textarea>
+        <div class="row ask-actions">
+          <label class="check"><input id="dry-run" type="checkbox" /> <span data-i18n="dryRun">Resolve only, no model call</span></label>
+          <button id="ask" type="button" data-i18n="ask">Ask</button>
+        </div>
+        <pre id="answer" class="answer"></pre>
+      </section>
+
+      <section class="card history">
+        <div class="section-heading"><div><span class="section-index" data-i18n="activityIndex">04 / ACTIVITY</span><h2 data-i18n="historyTitle">Your consultations</h2></div><button id="refresh-history" type="button" class="ghost small" data-i18n="refresh">Refresh</button></div>
+        <ul id="history" class="results"></ul>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

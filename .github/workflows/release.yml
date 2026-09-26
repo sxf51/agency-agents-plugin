@@ -1,0 +1,107 @@
+# Publishing a plugin release means one thing: pushing a Git tag named after the
+# version in plugin.yaml. The host lists a repository's tags to answer "is there
+# an update?", so a version bump that never becomes a tag is invisible to every
+# installation, and a tag that disagrees with the manifest misreports itself.
+#
+# This workflow removes both failure modes by making the manifest the trigger:
+# bump `version:` in plugin.yaml - the only place it is declared - merge to the
+# default branch, and the tag plus the GitHub release are created for you - but only
+# after the same lint and tests CI runs pass.
+#
+# Nothing happens when the version is unchanged, so ordinary commits are free.
+name: Release
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Tags decide whether this version was already published, and the
+          # changelog is built from the commits since the last one.
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Resolve the declared version
+        id: version
+        run: uv run python .github/scripts/plugin_version.py
+
+      - name: Has this version been released?
+        id: published
+        run: |
+          if git rev-parse -q --verify "refs/tags/${{ steps.version.outputs.tag }}" >/dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::${{ steps.version.outputs.tag }} already exists - nothing to release."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # A release is what users actually install, so it never skips the suite,
+      # even though CI has usually already run it on this same commit.
+      - name: Lint
+        if: steps.published.outputs.exists == 'false'
+        run: uv run ruff check .
+
+      - name: Install Redis
+        if: steps.published.outputs.exists == 'false'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends redis-server
+
+      - name: Test
+        if: steps.published.outputs.exists == 'false'
+        run: uv run pytest
+
+      # Before tagging, so a changelog that cannot be built never leaves behind a
+      # tag without a release. See the script for how commits are grouped.
+      - name: Generate the changelog
+        if: steps.published.outputs.exists == 'false'
+        run: |
+          uv run python .github/scripts/changelog.py --tag "${{ steps.version.outputs.tag }}" --output "$RUNNER_TEMP/release-notes.md"
+          cat "$RUNNER_TEMP/release-notes.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Tag the release
+        if: steps.published.outputs.exists == 'false'
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+
+      - name: Publish the release
+        if: steps.published.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # The host skips prereleases when it picks "the latest release", so an
+          # rc tag must be labelled as one here to stay consistent with that.
+          case "$VERSION" in
+            *a[0-9]*|*b[0-9]*|*rc[0-9]*) prerelease=--prerelease ;;
+            *) prerelease= ;;
+          esac
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --notes-file "$RUNNER_TEMP/release-notes.md" \
+            --verify-tag \
+            $prerelease

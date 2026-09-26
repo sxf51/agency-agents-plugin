@@ -1,0 +1,12 @@
+# Authoritative dependency list. The loader parses every non-comment line with
+# PEP 508, compares it against installed package metadata, and installs only
+# what is missing or version-mismatched before importing your code.
+#
+# Rejected outright: options (-r, -e, --index-url), local paths, VCS entries
+# (git+...), and direct URLs. One plain requirement per line:
+#
+#   httpx>=0.28,<1
+#   PyYAML>=6,<7
+#
+# This plugin is deliberately stdlib-only: the roster is markdown on disk, and the
+# one provider call goes through urllib, so it loads in any environment.

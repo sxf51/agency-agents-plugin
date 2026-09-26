@@ -1,0 +1,261 @@
+name: agency-agents-plugin
+version: 0.1.0
+description: The Agency roster - 279 specialist AI personas, routable as subagents,
+  searchable as data, consultable as prompts
+enabled: true
+metadata:
+  owner: capstone
+  category: agents
+  purpose: specialist-personas
+  license: MIT
+  upstream: https://github.com/msitarzewski/agency-agents
+  upstream_ref: 053ddbbf392a1688fc7043d81529f47ef2cf86c8
+  template: https://github.com/sxf51/plugin-template
+dependencies: {}
+ui:
+  pages:
+  - name: roster
+    title:
+      zh: 智能体名册
+      en: Agency Roster
+    description:
+      zh: 按部门浏览 279 位专家人格，读取其完整提示词，或直接向其提问
+      en: Browse 279 specialist personas by division, read their full prompts, or ask
+        one a question
+    nav: sidebar
+    roles: []
+  panels:
+  - id: roster-overview
+    title:
+      zh: 名册总览
+      en: Roster overview
+    description:
+      zh: 数据全部来自本插件自己的 Web API，由宿主渲染，插件不写前端代码
+      en: Every widget is fed by this plugin's own web API and rendered by the host
+    widgets:
+    - id: agent-count
+      type: stat
+      title:
+        zh: 专家人格
+        en: Personas
+      span: 3
+      hint_field: hint
+      source:
+        endpoint: stats
+        field: agents
+    - id: division-count
+      type: stat
+      title:
+        zh: 部门
+        en: Divisions
+      span: 3
+      source:
+        endpoint: stats
+        field: divisions
+    - id: specialist-count
+      type: stat
+      title:
+        zh: 已注册子智能体
+        en: Registered specialists
+      span: 3
+      source:
+        endpoint: stats
+        field: specialists
+    - id: consultation-count
+      type: stat
+      title:
+        zh: 我的咨询次数
+        en: My consultations
+      span: 3
+      source:
+        endpoint: stats
+        field: consultations
+        poll: 30
+    - id: division-table
+      type: table
+      title:
+        zh: 各部门与对应子智能体
+        en: Divisions and their specialists
+      span: 6
+      source:
+        endpoint: divisions
+      columns:
+      - key: division
+        title:
+          zh: 部门
+          en: Division
+      - key: agents
+        title:
+          zh: 人格数
+          en: Personas
+        width: 100
+      - key: subagent
+        title:
+          zh: 子智能体
+          en: Subagent
+        width: 260
+    - id: division-chart
+      type: bar-chart
+      title:
+        zh: 人格分布
+        en: Personas per division
+      span: 6
+      x_field: division
+      series:
+      - field: agents
+        label:
+          zh: 人格数
+          en: Personas
+      source:
+        endpoint: distribution
+    - id: consult-form
+      type: form
+      title:
+        zh: 直接问一位专家
+        en: Ask a persona
+      span: 6
+      submit: consult
+      schema:
+        agent:
+          type: string
+          label:
+            zh: 人格标识（留空则自动挑选）
+            en: Agent slug (empty picks the best match)
+          default: ''
+        question:
+          type: text
+          label:
+            zh: 问题
+            en: Question
+          default: ''
+    - id: recent-table
+      type: table
+      title:
+        zh: 最近咨询
+        en: Recent consultations
+      span: 6
+      source:
+        endpoint: recent
+        poll: 30
+      columns:
+      - key: agent
+        title:
+          zh: 专家
+          en: Persona
+        width: 200
+      - key: question
+        title:
+          zh: 问题
+          en: Question
+      - key: created
+        title:
+          zh: 时间
+          en: When
+        width: 180
+    - id: favourite-table
+      type: table
+      title:
+        zh: 我最常请教的专家
+        en: Most consulted personas
+      span: 6
+      source:
+        endpoint: favourites
+        poll: 60
+      columns:
+      - key: agent
+        title:
+          zh: 专家
+          en: Persona
+      - key: division
+        title:
+          zh: 部门
+          en: Division
+        width: 160
+      - key: calls
+        title:
+          zh: 次数
+          en: Calls
+        width: 90
+    - id: runtime
+      type: key-value
+      title:
+        zh: 运行时状态
+        en: Runtime state
+      span: 6
+      source:
+        endpoint: summary
+        poll: 60
+    - id: refresh
+      type: action
+      span: 3
+      tone: default
+      label:
+        zh: 重新读取名册
+        en: Re-read the catalog
+      confirm:
+        zh: 将从磁盘重新索引 catalog/ 下的人格文件，确定继续？
+        en: Re-indexes the persona files under catalog/. Continue?
+      source:
+        endpoint: actions/refresh
+    - id: attribution
+      type: markdown
+      span: 9
+      content: 'The personas under `catalog/` are vendored unchanged from
+
+        [agency-agents](https://github.com/msitarzewski/agency-agents) (MIT).
+
+        `roster.subagent_divisions` decides which divisions the planner can route
+        to;
+
+        everything else is reachable through `/agency-find`, `/agency-brief`,
+        `/agency-ask`
+
+        and `/agency-panel`.
+
+        '
+config:
+  commands:
+  - command: /agency
+    usage: /agency <task>
+    description: Route a task to the best-matched Agency specialist
+    priority: 38
+    level: 1
+    route: task
+    requires_tool: agency_agents_roster_tool
+    planner_hints:
+      preferred_route: subagent
+      preferred_subagent: agency_agents_router
+      fallback_route: tool
+      fallback_tool: agency_agents_roster_tool
+  - command: /agency-find
+    usage: /agency-find <keywords>
+    description: Search the roster of 279 specialist personas
+    priority: 40
+    level: 1
+    route: tool
+    tool: agency_agents_roster_tool
+    requires_tool: agency_agents_roster_tool
+  - command: /agency-brief
+    usage: /agency-brief <agent>
+    description: Read one persona's full prompt
+    priority: 41
+    level: 1
+    route: tool
+    tool: agency_agents_brief_tool
+    requires_tool: agency_agents_brief_tool
+  - command: /agency-panel
+    usage: /agency-panel <task>
+    description: Assemble a vote, dialogue or consensus panel of complementary personas
+    priority: 42
+    level: 1
+    route: tool
+    tool: agency_agents_panel_tool
+    requires_tool: agency_agents_panel_tool
+  - command: /agency-ask
+    usage: /agency-ask <agent> <question>
+    description: Ask one persona a question, answered in its own voice
+    priority: 43
+    level: 2
+    route: tool
+    tool: agency_agents_consult_tool
+    requires_tool: agency_agents_consult_tool
